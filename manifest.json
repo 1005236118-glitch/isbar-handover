@@ -1,0 +1,28 @@
+{
+  "name": "智交班 - 神经科ISBAR交班助手",
+  "short_name": "智交班",
+  "description": "神经科ISBAR智能交班工具，支持OCR识别病历截图、自动分类填充、规范交班文本生成",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#1a73e8",
+  "background_color": "#f0f4f8",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["medical", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "./icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

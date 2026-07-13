@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a73e8;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#1557b0;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  <!-- 背景圆角矩形 -->
+  <rect x="4" y="4" width="184" height="184" rx="32" ry="32" fill="url(#bg)"/>
+  <!-- 医疗十字 -->
+  <rect x="76" y="28" width="40" height="136" rx="6" fill="#ffffff"/>
+  <rect x="28" y="76" width="136" height="40" rx="6" fill="#ffffff"/>
+  <!-- 大脑简化图标 -->
+  <circle cx="96" cy="96" r="18" fill="none" stroke="#1a73e8" stroke-width="3" stroke-dasharray="8 4"/>
+</svg>
