@@ -2,9 +2,9 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
   <meta name="theme-color" content="#1a73e8">
-  <meta name="description" content="神经科ISBAR交班助手 - 纯前端离线PWA应用">
+  <meta name="description" content="神经科ISBAR交班助手 - 语音录入PWA应用">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="智交班">
@@ -13,11 +13,196 @@
   <link rel="apple-touch-icon" href="./icon-192.svg">
   <title>智交班 - 神经科ISBAR交班助手</title>
   <link rel="stylesheet" href="./style.css">
-  <!-- Tesseract.js OCR 引擎（本地离线识别） -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 </head>
 <body>
-  <!-- ==================== 顶部导航栏 ==================== -->
+
+<!-- ==================== 登录遮罩层 ==================== -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>智交班</h2>
+    <div class="sub">神经科ISBAR交班助手</div>
+    <div class="login-hint" id="loginHint">默认账号：工号 1001 / 密码 123456（管理员：admin / admin123）</div>
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="switchLoginTab(0,this)">普通登录</button>
+      <button class="login-tab" onclick="switchLoginTab(1,this)">管理员登录</button>
+    </div>
+    <!-- 普通登录 -->
+    <div class="login-panel show" id="loginPanel0">
+      <div class="form-row"><label>工号</label><input id="loginId" placeholder="请输入工号" autocomplete="off"></div>
+      <div class="form-row"><label>密码</label><input id="loginPwd" type="password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="login-btn" onclick="doLogin()">登 录</button>
+      <div class="login-error" id="loginError">工号或密码错误，请重试</div>
+      <div class="login-links">
+        <span class="login-link" onclick="showForgotPwdModal()">忘记密码？</span>
+        <span class="login-link" onclick="showRegisterModal()">还没有账号？点击注册 →</span>
+      </div>
+      <div class="login-links" style="justify-content:center;margin-top:4px">
+        <span class="login-link" onclick="showSyncModal()" style="color:var(--accent)">多设备同步 →</span>
+      </div>
+    </div>
+    <!-- 管理员登录 -->
+    <div class="login-panel" id="loginPanel1">
+      <div class="form-row"><label>账号</label><input id="adminId" placeholder="请输入管理员账号" autocomplete="off"></div>
+      <div class="form-row"><label>密码</label><input id="adminPwd" type="password" placeholder="请输入密码" onkeydown="if(event.key==='Enter')doAdminLogin()"></div>
+      <button class="login-btn" onclick="doAdminLogin()">管理员登录</button>
+      <div class="login-error" id="adminLoginError">账号或密码错误</div>
+      <div class="login-links">
+        <span class="login-link" onclick="showAdminForgotPwd()">忘记密码？</span>
+        <span class="login-link" id="adminSetupLink" onclick="showAdminSetupModal()">设置管理员账号 →</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 管理员设置密码验证弹窗 ==================== -->
+<div class="modal-overlay" id="setupPwdModal" style="z-index:300;display:none">
+  <div class="modal-content modal-sm">
+    <div class="modal-header">
+      <h3 id="setupPwdTitle">管理员设置验证</h3>
+      <button class="btn-close" onclick="closeSetupPwdModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">请输入管理员设置专用密码以继续</p>
+      <div class="form-row"><label>设置密码</label><input id="setupPwdInput" type="password" placeholder="请输入设置密码" onkeydown="if(event.key==='Enter')verifySetupPwd()"></div>
+      <button class="login-btn" onclick="verifySetupPwd()" style="margin-top:10px">验证</button>
+      <div class="login-error" id="setupPwdError" style="text-align:center;margin-top:8px;display:none">设置密码错误，请重试</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 管理员首次设置界面 ==================== -->
+<div class="login-overlay hide" id="adminSetupOverlay">
+  <div class="login-box">
+    <h2>管理员首次设置</h2>
+    <div class="sub">请设置管理员账号和密码</div>
+    <div class="form-row"><label>姓名</label><input id="setupAdminName" placeholder="请输入管理员姓名" autocomplete="off"></div>
+    <div class="form-row"><label>工号</label><input id="setupAdminId" placeholder="请输入工号" autocomplete="off"></div>
+    <div class="form-row"><label>密码</label><input id="setupAdminPwd" type="password" placeholder="请设置密码" onkeydown="if(event.key==='Enter')doAdminSetup()"></div>
+    <div class="form-row"><label>确认密码</label><input id="setupAdminPwd2" type="password" placeholder="请再次输入密码" onkeydown="if(event.key==='Enter')doAdminSetup()"></div>
+    <button class="login-btn" onclick="doAdminSetup()">设置并保存</button>
+    <div class="login-error" id="setupAdminError">设置失败</div>
+  </div>
+</div>
+
+<!-- ==================== 管理员密码重置弹窗 ==================== -->
+<div class="modal-overlay" id="adminResetModal" style="z-index:300;display:none">
+  <div class="modal-content modal-sm">
+    <div class="modal-header">
+      <h3>重置管理员密码</h3>
+      <button class="btn-close" onclick="closeAdminResetModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row"><label>工号</label><input id="adminResetId" placeholder="请输入管理员工号" autocomplete="off"></div>
+      <div class="form-row"><label>新密码</label><input id="adminResetPwd" type="password" placeholder="请输入新密码" onkeydown="if(event.key==='Enter')doAdminResetPwd()"></div>
+      <div class="form-row"><label>确认密码</label><input id="adminResetPwd2" type="password" placeholder="请再次输入新密码" onkeydown="if(event.key==='Enter')doAdminResetPwd()"></div>
+      <button class="login-btn" onclick="doAdminResetPwd()" style="margin-top:10px">重置密码</button>
+      <div class="login-error" id="adminResetError" style="text-align:center;margin-top:8px;display:none">工号不存在或重置失败</div>
+      <div class="login-success" id="adminResetSuccess" style="text-align:center;margin-top:8px;display:none">密码已重置，请返回登录</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 普通用户忘记密码弹窗 ==================== -->
+<div class="modal-overlay" id="forgotPwdModal" style="z-index:300;display:none">
+  <div class="modal-content modal-sm">
+    <div class="modal-header">
+      <h3>重置密码</h3>
+      <button class="btn-close" onclick="closeForgotPwdModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row"><label>姓名</label><input id="fpName" placeholder="请输入姓名" autocomplete="off"></div>
+      <div class="form-row"><label>工号</label><input id="fpId" placeholder="请输入工号" autocomplete="off"></div>
+      <div class="form-row"><label>新密码</label><input id="fpPwd" type="password" placeholder="请输入新密码" onkeydown="if(event.key==='Enter')doForgotPwdReset()"></div>
+      <div class="form-row"><label>确认密码</label><input id="fpPwd2" type="password" placeholder="请再次输入新密码" onkeydown="if(event.key==='Enter')doForgotPwdReset()"></div>
+      <button class="login-btn" onclick="doForgotPwdReset()" style="margin-top:10px">重置密码</button>
+      <div class="login-error" id="fpError" style="text-align:center;margin-top:8px;display:none">姓名或工号不匹配</div>
+      <div class="login-success" id="fpSuccess" style="text-align:center;margin-top:8px;display:none">密码已重置，请返回登录</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 注册弹窗 ==================== -->
+<div class="modal-overlay" id="registerModal" style="z-index:300;display:none">
+  <div class="modal-content modal-sm">
+    <div class="modal-header">
+      <h3>注册新账号</h3>
+      <button class="btn-close" onclick="closeRegisterModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row"><label>姓名</label><input id="regName" placeholder="请输入姓名" autocomplete="off"></div>
+      <div class="form-row"><label>工号</label><input id="regId" placeholder="请输入工号（用于登录）" autocomplete="off"></div>
+      <div class="form-row"><label>密码</label><input id="regPwd" type="password" placeholder="请设置密码（至少4位）"></div>
+      <div class="form-row"><label>确认密码</label><input id="regPwd2" type="password" placeholder="请再次输入密码"></div>
+      <div style="text-align:right;margin-top:10px">
+        <button class="btn btn-primary" onclick="doRegister()">注册</button>
+      </div>
+      <div class="login-error" id="regError" style="text-align:center;margin-top:8px;display:none">注册失败</div>
+      <div class="login-success" id="regSuccess" style="text-align:center;margin-top:8px;display:none">注册成功，请返回登录</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 多设备同步弹窗 ==================== -->
+<div class="modal-overlay" id="syncModal" style="z-index:400;display:none">
+  <div class="modal-content modal-sm">
+    <div class="modal-header">
+      <h3>多设备账号同步</h3>
+      <button class="btn-close" onclick="closeSyncModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="sync-tabs">
+        <button class="sync-tab active" onclick="switchSyncTab(0,this)">生成同步码</button>
+        <button class="sync-tab" onclick="switchSyncTab(1,this)">导入同步码</button>
+      </div>
+      <!-- 生成同步码 -->
+      <div class="sync-panel show" id="syncPanel0">
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">将当前设备上的所有账号数据生成同步码，复制后发送到另一台设备导入即可实现账号同步。</p>
+        <button class="login-btn" onclick="generateSyncCode()" style="margin-bottom:10px">生成同步码</button>
+        <textarea id="syncCodeOutput" class="sync-code-textarea" rows="4" placeholder="点击上方按钮生成同步码..." readonly></textarea>
+        <button class="btn btn-outline" onclick="copySyncCode()" style="width:100%;margin-top:8px;display:none" id="btnCopySyncCode">复制同步码</button>
+        <div class="login-success" id="syncGenSuccess" style="text-align:center;margin-top:8px;display:none">同步码已生成，请复制后发送到另一台设备</div>
+      </div>
+      <!-- 导入同步码 -->
+      <div class="sync-panel" id="syncPanel1">
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">将从另一台设备生成的同步码粘贴到下方，点击导入即可合并账号数据。新账号会添加，已有账号会更新。</p>
+        <textarea id="syncCodeInput" class="sync-code-textarea" rows="4" placeholder="请粘贴同步码..."></textarea>
+        <button class="login-btn" onclick="importSyncCode()" style="margin-top:8px">导入并合并账号</button>
+        <div class="login-error" id="syncImportError" style="text-align:center;margin-top:8px;display:none">同步码无效，请检查后重试</div>
+        <div class="login-success" id="syncImportSuccess" style="text-align:center;margin-top:8px;display:none">账号同步成功！请使用注册的账号登录</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 登记信息弹窗（登录后首次弹出） ==================== -->
+<div class="modal-overlay" id="modalRegisterInfo" style="display:none;z-index:150">
+  <div class="modal-content modal-sm">
+    <div class="modal-header">
+      <h2>交班登记</h2>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">请在开始交班录入前填写以下信息</p>
+      <div class="form-row"><label>病区</label>
+        <select id="regWard">
+          <option value="">请选择病区</option>
+          <option value="神经一病区">神经一病区</option>
+          <option value="神经二病区">神经二病区</option>
+          <option value="神经三病区">神经三病区</option>
+        </select>
+      </div>
+      <div class="form-row"><label>姓名</label><input id="regNurseName" placeholder="请输入您的姓名" autocomplete="off"></div>
+      <div class="form-row"><label>工牌号</label><input id="regNurseId" placeholder="请输入工牌号" autocomplete="off"></div>
+      <div class="login-error" id="regInfoError" style="text-align:center;margin-top:8px;display:none">请填写完整信息</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-accent" onclick="confirmRegisterInfo()">确认并开始交班</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 主应用（登录后显示） ==================== -->
+<div id="appMain" style="display:none;display:flex;flex-direction:column;min-height:100vh">
+  <!-- 顶部导航栏 -->
   <header class="navbar">
     <div class="navbar-brand">
       <svg class="logo-icon" viewBox="0 0 32 32" width="28" height="28">
@@ -25,157 +210,159 @@
         <text x="16" y="22" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold">+</text>
       </svg>
       <h1 class="app-title">智交班</h1>
-      <span class="app-subtitle">神经科ISBAR交班助手</span>
+      <span class="app-subtitle" id="wardBadge"></span>
     </div>
     <div class="navbar-actions">
+      <span class="user-info" id="userInfoDisplay"></span>
+      <button id="btnSearch" class="btn btn-outline btn-sm" title="查找记录">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        查找
+      </button>
+      <button id="btnNewRecord" class="btn btn-outline btn-sm" title="新建交班">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        新建
+      </button>
       <button id="btnInstall" class="btn btn-outline btn-sm" title="安装到桌面" style="display:none;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        安装应用
+        安装
       </button>
-      <button id="btnHistory" class="btn btn-outline btn-sm" title="历史记录">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        历史记录
-      </button>
-      <button id="btnClear" class="btn btn-outline btn-sm btn-danger" title="清空所有数据">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        清空数据
-      </button>
+      <button id="btnLogout" class="btn btn-outline btn-sm btn-danger" title="退出登录">退出</button>
     </div>
   </header>
 
-  <!-- ==================== 主体区域 ==================== -->
-  <main class="main-container">
-    <!-- 左侧：上传识别区 -->
-    <section class="panel panel-upload" id="uploadPanel">
-      <h2 class="panel-title">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        上传识别区
-      </h2>
+  <!-- 录音状态指示器 -->
+  <div class="recording-bar" id="recordingBar" style="display:none;">
+    <div class="recording-bar-inner">
+      <span class="recording-dot"></span>
+      <span class="recording-label">正在录音中...</span>
+      <span class="recording-interim" id="recordingInterim"></span>
+      <button class="btn btn-sm btn-danger recording-stop-btn" id="btnStopRecording">停止录音</button>
+    </div>
+  </div>
 
-      <!-- 上传按钮组 -->
-      <div class="upload-buttons">
-        <button id="btnUpload" class="btn btn-primary btn-block">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          选择图片文件
-        </button>
-        <button id="btnCamera" class="btn btn-secondary btn-block">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-          摄像头拍照
-        </button>
-        <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;">
-      </div>
-
-      <!-- 图片预览区 -->
-      <div class="preview-area" id="previewArea">
-        <div class="preview-placeholder" id="previewPlaceholder">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-          <p>请上传病历截图或拍照</p>
-        </div>
-        <img id="imgPreview" src="" alt="预览" style="display:none;">
-        <div class="preview-toolbar" id="previewToolbar" style="display:none;">
-          <label class="brightness-label">
-            亮度：
-            <input type="range" id="brightnessSlider" min="0" max="200" value="100" class="brightness-slider">
-            <span id="brightnessValue">100%</span>
-          </label>
-          <button id="btnRemoveImage" class="btn btn-sm btn-outline">移除图片</button>
+  <!-- 记录列表视图 -->
+  <main class="main-container" id="recordsView" style="display:none;">
+    <div class="panel panel-full">
+      <div class="records-header">
+        <h2>交班记录查询</h2>
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="搜索：录入者姓名或工牌号..." oninput="searchRecords()">
+          <select id="filterWard" onchange="searchRecords()">
+            <option value="">全部病区</option>
+            <option value="神经一病区">神经一病区</option>
+            <option value="神经二病区">神经二病区</option>
+            <option value="神经三病区">神经三病区</option>
+          </select>
         </div>
       </div>
-
-      <!-- OCR 操作区 -->
-      <div class="ocr-actions">
-        <button id="btnOCR" class="btn btn-accent btn-block" disabled>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          开始识别文字
-        </button>
-        <div class="ocr-status" id="ocrStatus"></div>
+      <div class="records-list" id="recordsList">
+        <p class="empty-hint">暂无交班记录</p>
       </div>
+    </div>
+  </main>
 
-      <!-- 原始识别文本 -->
-      <div class="ocr-result">
-        <label class="field-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          原始识别文本（可编辑修改）：
-        </label>
-        <textarea id="ocrText" class="text-area" rows="6" placeholder="OCR识别结果将显示在此处..."></textarea>
-        <button id="btnClassify" class="btn btn-primary btn-block" disabled>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 17"/><polyline points="20 17 14 11 20 17"/><line x1="14" y1="7" x2="20" y2="17"/><line x1="10" y1="7" x2="4" y2="17"/></svg>
-          自动分类到ISBAR
-        </button>
-      </div>
-    </section>
-
-    <!-- 右侧：ISBAR编辑区 -->
-    <section class="panel panel-isbar" id="isbarPanel">
+  <!-- ISBAR编辑视图 -->
+  <main class="main-container" id="editorView">
+    <section class="panel panel-isbar panel-full">
       <h2 class="panel-title">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         ISBAR 交班编辑区
+        <span class="panel-hint">点击各板块右侧麦克风按钮，语音录入时文字实时显示在下方文本框</span>
       </h2>
 
-      <!-- I - Identification 身份确认 -->
+      <!-- I - Identification -->
       <div class="isbar-card card-i">
         <div class="card-header">
-          <span class="card-badge badge-i">I</span>
-          <h3>身份确认 <small>Identification</small></h3>
+          <div class="card-header-left">
+            <span class="card-badge badge-i">I</span>
+            <h3>身份确认 <small>Identification</small></h3>
+          </div>
+          <button class="btn-mic" data-target="isbarI" title="语音录入身份信息">
+            <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
         </div>
         <textarea id="isbarI" class="text-area" rows="3" placeholder="床号、姓名、性别、年龄、入院诊断&#10;示例：床号：3床，姓名：张XX，性别：女，年龄：68岁，入院诊断：急性缺血性脑卒中（右侧基底节区）"></textarea>
       </div>
 
-      <!-- S - Situation 患者情况 -->
+      <!-- S - Situation -->
       <div class="isbar-card card-s">
         <div class="card-header">
-          <span class="card-badge badge-s">S</span>
-          <h3>患者情况 <small>Situation</small></h3>
+          <div class="card-header-left">
+            <span class="card-badge badge-s">S</span>
+            <h3>患者情况 <small>Situation</small></h3>
+          </div>
+          <button class="btn-mic" data-target="isbarS" title="语音录入患者情况">
+            <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
         </div>
         <textarea id="isbarS" class="text-area" rows="3" placeholder="入院时间、主诉、入院时情况、病情变化、手术/危重事件、核心症状&#10;示例：患者因'突发左侧肢体无力2小时'入院，入院时神志清楚，双侧瞳孔等大等圆，左侧肢体肌力2级；昨日14:00行支架植入术，术后神志清楚，左侧肢体肌力3级。"></textarea>
       </div>
 
-      <!-- B - Background 背景信息 -->
+      <!-- B - Background -->
       <div class="isbar-card card-b">
         <div class="card-header">
-          <span class="card-badge badge-b">B</span>
-          <h3>背景信息 <small>Background</small></h3>
+          <div class="card-header-left">
+            <span class="card-badge badge-b">B</span>
+            <h3>背景信息 <small>Background</small></h3>
+          </div>
+          <button class="btn-mic" data-target="isbarB" title="语音录入背景信息">
+            <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
         </div>
         <textarea id="isbarB" class="text-area" rows="3" placeholder="既往病史、药物过敏史、当前用药、关键检查结果、留置管路、皮肤状态&#10;示例：既往高血压病史10年，口服硝苯地平控制；无药物过敏史；昨日头颅MRI提示右侧基底节区急性梗死；留置右侧肘正中静脉留置针1枚，固定通畅，全身皮肤完整无压红。"></textarea>
       </div>
 
-      <!-- A - Assessment 综合评估 -->
+      <!-- A - Assessment -->
       <div class="isbar-card card-a">
         <div class="card-header">
-          <span class="card-badge badge-a">A</span>
-          <h3>综合评估 <small>Assessment</small></h3>
+          <div class="card-header-left">
+            <span class="card-badge badge-a">A</span>
+            <h3>综合评估 <small>Assessment</small></h3>
+          </div>
+          <button class="btn-mic" data-target="isbarA" title="语音录入综合评估">
+            <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
         </div>
         <textarea id="isbarA" class="text-area" rows="3" placeholder="生命体征、24h出入量、饮食睡眠、大小便、风险评分、病情判断&#10;示例：患者目前神志清楚，瞳孔等大等圆，对光反射灵敏，左侧肢体肌力3级；生命体征平稳，血压125-135/75-85mmHg；24小时入量1800ml，出量1500ml；压疮风险12分（低危），疼痛评分2分。"></textarea>
       </div>
 
-      <!-- R - Recommendation 护理建议 -->
+      <!-- R - Recommendation -->
       <div class="isbar-card card-r">
         <div class="card-header">
-          <span class="card-badge badge-r">R</span>
-          <h3>护理建议 <small>Recommendation</small></h3>
+          <div class="card-header-left">
+            <span class="card-badge badge-r">R</span>
+            <h3>护理建议 <small>Recommendation</small></h3>
+          </div>
+          <button class="btn-mic" data-target="isbarR" title="语音录入护理建议">
+            <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
         </div>
         <textarea id="isbarR" class="text-area" rows="3" placeholder="护理重点、监测事项、待执行治疗、康复指导、会诊跟进、注意事项&#10;示例：1. 持续心电监护，监测血压波动，维持在130/80mmHg左右；2. 今晨空腹采血，追踪肝肾功能结果；3. 左侧肢体康复训练，指导主动运动；4. 追踪神经内科会诊意见，及时调整治疗方案。"></textarea>
       </div>
 
-      <!-- 待归类内容 -->
+      <!-- 备注 -->
       <div class="unclassified-area">
         <label class="field-label">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          待归类内容（可手动复制到对应板块）：
+          备注信息：
         </label>
-        <textarea id="unclassified" class="text-area text-area-small" rows="3" placeholder="无法自动分类的文字将显示在此处..."></textarea>
+        <textarea id="unclassified" class="text-area text-area-small" rows="2" placeholder="其他需要补充的交班信息..."></textarea>
+      </div>
+
+      <!-- 暂存按钮 -->
+      <div style="text-align:center;margin-top:4px;">
+        <button id="btnDraftSave" class="btn btn-outline" style="width:100%;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          暂存当前内容（未完成也可保存）
+        </button>
       </div>
     </section>
   </main>
 
-  <!-- ==================== 底部操作栏 ==================== -->
-  <footer class="action-bar">
+  <!-- 底部操作栏 -->
+  <footer class="action-bar" id="actionBar">
     <button id="btnGenerate" class="btn btn-accent btn-lg">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       生成交班文稿
     </button>
     <button id="btnExportTXT" class="btn btn-primary btn-lg">
@@ -187,82 +374,27 @@
       导出Word
     </button>
   </footer>
+</div>
 
-  <!-- ==================== 弹窗：交班文稿预览 ==================== -->
-  <div class="modal-overlay" id="modalPreview" style="display:none;">
-    <div class="modal-content modal-lg">
-      <div class="modal-header">
-        <h2>交班文稿预览</h2>
-        <button class="btn-close" id="btnClosePreview">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="report-preview" id="reportContent"></div>
-      </div>
-      <div class="modal-footer">
-        <button id="btnCopyReport" class="btn btn-outline">复制到剪贴板</button>
-        <button id="btnSaveHistory" class="btn btn-primary">保存到历史记录</button>
-        <button id="btnClosePreview2" class="btn btn-outline">关闭</button>
-      </div>
+<!-- ==================== 弹窗：交班文稿预览 ==================== -->
+<div class="modal-overlay" id="modalPreview" style="display:none;">
+  <div class="modal-content modal-lg">
+    <div class="modal-header">
+      <h2>交班文稿预览</h2>
+      <button class="btn-close" id="btnClosePreview">&times;</button>
+    </div>
+    <div class="modal-body"><div class="report-preview" id="reportContent"></div></div>
+    <div class="modal-footer">
+      <button id="btnCopyReport" class="btn btn-outline">复制到剪贴板</button>
+      <button id="btnSaveHistory" class="btn btn-primary">保存到记录</button>
+      <button id="btnClosePreview2" class="btn btn-outline">关闭</button>
     </div>
   </div>
+</div>
 
-  <!-- ==================== 弹窗：历史记录 ==================== -->
-  <div class="modal-overlay" id="modalHistory" style="display:none;">
-    <div class="modal-content modal-lg">
-      <div class="modal-header">
-        <h2>历史交班记录</h2>
-        <button class="btn-close" id="btnCloseHistory">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="history-list" id="historyList">
-          <p class="empty-hint">暂无历史记录</p>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="btnCloseHistory2" class="btn btn-outline">关闭</button>
-      </div>
-    </div>
-  </div>
+<!-- Toast -->
+<div class="toast" id="toast" style="display:none;"></div>
 
-  <!-- ==================== 弹窗：摄像头拍照 ==================== -->
-  <div class="modal-overlay" id="modalCamera" style="display:none;">
-    <div class="modal-content modal-md">
-      <div class="modal-header">
-        <h2>摄像头拍照</h2>
-        <button class="btn-close" id="btnCloseCamera">&times;</button>
-      </div>
-      <div class="modal-body modal-body-camera">
-        <video id="cameraVideo" autoplay playsinline class="camera-video"></video>
-        <canvas id="cameraCanvas" style="display:none;"></canvas>
-      </div>
-      <div class="modal-footer">
-        <button id="btnCapture" class="btn btn-accent">拍照</button>
-        <button id="btnCloseCamera2" class="btn btn-outline">取消</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ==================== 弹窗：确认清空 ==================== -->
-  <div class="modal-overlay" id="modalConfirm" style="display:none;">
-    <div class="modal-content modal-sm">
-      <div class="modal-header">
-        <h2>确认操作</h2>
-        <button class="btn-close" id="btnCloseConfirm">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p>确定要清空所有本地数据吗？此操作不可恢复。</p>
-      </div>
-      <div class="modal-footer">
-        <button id="btnConfirmClear" class="btn btn-danger">确认清空</button>
-        <button id="btnCloseConfirm2" class="btn btn-outline">取消</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast 提示 -->
-  <div class="toast" id="toast" style="display:none;"></div>
-
-  <!-- 核心业务逻辑 -->
-  <script src="./app.js"></script>
+<script src="./app.js"></script>
 </body>
 </html>
