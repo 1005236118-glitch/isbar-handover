@@ -290,7 +290,7 @@ function doAdminResetPwd() {
   showSuccess('adminResetSuccess', '密码已重置！请返回登录');
 }
 
-// ========== 多设备账号同步 ==========
+// ========== 多设备数据同步（账号 + 交班记录） ==========
 function showSyncModal() {
   $('syncCodeOutput').value = '';
   $('syncCodeInput').value = '';
@@ -310,19 +310,24 @@ function switchSyncTab(idx, btn) {
   document.getElementById('syncPanel1').classList.toggle('show', idx === 1);
 }
 
-/** 生成同步码：将所有用户数据压缩为Base64字符串 */
+/** 生成同步码：将用户和交班记录打包压缩为Base64字符串 */
 function generateSyncCode() {
   const users = getUsers();
-  if (users.length === 0) {
-    showToast('当前设备没有账号数据，请先注册账号');
+  const records = getRecords();
+  if (users.length === 0 && records.length === 0) {
+    showToast('当前设备没有可同步的数据');
     return;
   }
   try {
-    const json = JSON.stringify(users);
+    const data = { users, records };
+    const json = JSON.stringify(data);
     const code = btoa(unescape(encodeURIComponent(json)));
     $('syncCodeOutput').value = code;
     $('btnCopySyncCode').style.display = 'block';
-    showSuccess('syncGenSuccess', '同步码已生成！请点击下方按钮复制，发送到另一台设备导入');
+    const info = [];
+    if (users.length > 0) info.push(`${users.length}个账号`);
+    if (records.length > 0) info.push(`${records.length}条记录`);
+    showSuccess('syncGenSuccess', `同步码已生成！包含 ${info.join('、')}，请点击下方按钮复制，发送到另一台设备导入`);
   } catch (e) {
     showToast('生成同步码失败：' + e.message);
   }
@@ -342,7 +347,7 @@ function copySyncCode() {
   }
 }
 
-/** 导入同步码：解码并合并用户数据 */
+/** 导入同步码：解码并合并用户和记录数据 */
 function importSyncCode() {
   const code = $('syncCodeInput').value.trim();
   if (!code) {
@@ -352,28 +357,57 @@ function importSyncCode() {
   }
   try {
     const json = decodeURIComponent(escape(atob(code)));
-    const remoteUsers = JSON.parse(json);
-    if (!Array.isArray(remoteUsers) || remoteUsers.length === 0) {
-      throw new Error('数据格式错误');
+    const data = JSON.parse(json);
+
+    // 兼容旧版同步码（纯用户数组）
+    let remoteUsers, remoteRecords;
+    if (Array.isArray(data)) {
+      remoteUsers = data;
+      remoteRecords = [];
+    } else {
+      remoteUsers = data.users || [];
+      remoteRecords = data.records || [];
     }
 
-    const localUsers = getUsers();
-    let added = 0, updated = 0;
+    if (remoteUsers.length === 0 && remoteRecords.length === 0) {
+      throw new Error('数据为空');
+    }
 
+    // 合并用户
+    const localUsers = getUsers();
+    let userAdded = 0, userUpdated = 0;
     remoteUsers.forEach(ru => {
       const existing = localUsers.findIndex(u => u.id === ru.id);
       if (existing >= 0) {
         localUsers[existing] = { ...localUsers[existing], ...ru };
-        updated++;
+        userUpdated++;
       } else {
         localUsers.push(ru);
-        added++;
+        userAdded++;
       }
     });
-
     saveUsers(localUsers);
+
+    // 合并记录
+    const localRecords = getRecords();
+    let recAdded = 0, recUpdated = 0;
+    remoteRecords.forEach(rr => {
+      const existing = localRecords.findIndex(r => r.id === rr.id);
+      if (existing >= 0) {
+        localRecords[existing] = { ...localRecords[existing], ...rr };
+        recUpdated++;
+      } else {
+        localRecords.push(rr);
+        recAdded++;
+      }
+    });
+    saveRecords(localRecords);
+
+    const parts = [];
+    if (userAdded > 0 || userUpdated > 0) parts.push(`账号：新增${userAdded}个，更新${userUpdated}个`);
+    if (recAdded > 0 || recUpdated > 0) parts.push(`记录：新增${recAdded}条，更新${recUpdated}条`);
     hideError('syncImportError');
-    showSuccess('syncImportSuccess', `同步成功！新增 ${added} 个账号，更新 ${updated} 个账号`);
+    showSuccess('syncImportSuccess', `同步成功！${parts.join('；')}`);
     $('syncCodeInput').value = '';
   } catch (e) {
     showError('syncImportError', '同步码无效，请检查后重试');
@@ -811,6 +845,11 @@ function bindEvents() {
   $('btnStopRecording').addEventListener('click', () => Speech.stop());
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && Speech.isRecording) { e.preventDefault(); Speech.stop(); }
+  });
+
+  // 查询输入框回车搜索
+  $('searchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') searchRecords();
   });
 
   // 视图切换

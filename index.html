@@ -146,7 +146,7 @@
 <div class="modal-overlay" id="syncModal" style="z-index:400;display:none">
   <div class="modal-content modal-sm">
     <div class="modal-header">
-      <h3>多设备账号同步</h3>
+      <h3>多设备数据同步</h3>
       <button class="btn-close" onclick="closeSyncModal()">&times;</button>
     </div>
     <div class="modal-body">
@@ -156,7 +156,7 @@
       </div>
       <!-- 生成同步码 -->
       <div class="sync-panel show" id="syncPanel0">
-        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">将当前设备上的所有账号数据生成同步码，复制后发送到另一台设备导入即可实现账号同步。</p>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">将当前设备上的所有账号和交班记录生成同步码，复制后发送到另一台设备导入即可实现数据同步。</p>
         <button class="login-btn" onclick="generateSyncCode()" style="margin-bottom:10px">生成同步码</button>
         <textarea id="syncCodeOutput" class="sync-code-textarea" rows="4" placeholder="点击上方按钮生成同步码..." readonly></textarea>
         <button class="btn btn-outline" onclick="copySyncCode()" style="width:100%;margin-top:8px;display:none" id="btnCopySyncCode">复制同步码</button>
@@ -164,9 +164,9 @@
       </div>
       <!-- 导入同步码 -->
       <div class="sync-panel" id="syncPanel1">
-        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">将从另一台设备生成的同步码粘贴到下方，点击导入即可合并账号数据。新账号会添加，已有账号会更新。</p>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">将从另一台设备生成的同步码粘贴到下方，点击导入即可合并账号和交班记录。新数据会添加，已有数据会更新。</p>
         <textarea id="syncCodeInput" class="sync-code-textarea" rows="4" placeholder="请粘贴同步码..."></textarea>
-        <button class="login-btn" onclick="importSyncCode()" style="margin-top:8px">导入并合并账号</button>
+        <button class="login-btn" onclick="importSyncCode()" style="margin-top:8px">导入并合并数据</button>
         <div class="login-error" id="syncImportError" style="text-align:center;margin-top:8px;display:none">同步码无效，请检查后重试</div>
         <div class="login-success" id="syncImportSuccess" style="text-align:center;margin-top:8px;display:none">账号同步成功！请使用注册的账号登录</div>
       </div>
@@ -246,13 +246,14 @@
       <div class="records-header">
         <h2>交班记录查询</h2>
         <div class="search-bar">
-          <input type="text" id="searchInput" placeholder="搜索：录入者姓名或工牌号..." oninput="searchRecords()">
-          <select id="filterWard" onchange="searchRecords()">
+          <input type="text" id="searchInput" placeholder="搜索：录入者姓名或工牌号...">
+          <select id="filterWard">
             <option value="">全部病区</option>
             <option value="神经一病区">神经一病区</option>
             <option value="神经二病区">神经二病区</option>
             <option value="神经三病区">神经三病区</option>
           </select>
+          <button class="btn btn-primary btn-sm" onclick="searchRecords()">查询</button>
         </div>
       </div>
       <div class="records-list" id="recordsList">
