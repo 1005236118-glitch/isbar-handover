@@ -563,6 +563,9 @@ function showRecordsView() {
   $('editorView').style.display = 'none';
   $('recordsView').style.display = '';
   $('actionBar').style.display = 'none';
+  // 管理员显示导出按钮
+  const isAdmin = STATE.currentUser && STATE.currentUser.role === 'admin';
+  $('btnExportExcel').style.display = isAdmin ? 'inline-flex' : 'none';
   renderRecordsList();
 }
 
@@ -726,6 +729,14 @@ function draftSave() {
 function searchRecords() {
   renderRecordsList();
 }
+
+/** 判断当前用户是否有权限编辑某条记录 */
+function canEditRecord(record) {
+  if (!STATE.currentUser) return false;
+  if (STATE.currentUser.role === 'admin') return true;
+  return record.nurseId === STATE.currentUser.id;
+}
+
 function renderRecordsList() {
   let records = getRecords();
   const search = ($('searchInput').value || '').toLowerCase();
@@ -749,16 +760,21 @@ function renderRecordsList() {
 
   list.innerHTML = records.map(r => {
     const preview = (r.report || '').replace(/\n/g, ' ').substring(0, 60) + '...';
+    const canEdit = canEditRecord(r);
+    const ownerLabel = canEdit ? '' : `<span class="record-owner-tag">（${r.nurseName}录入）</span>`;
+    const actionButtons = canEdit
+      ? `<button class="btn btn-sm btn-primary" onclick="loadRecordToEditor(${r.id})">加载编辑</button>
+         <button class="btn btn-sm btn-outline" onclick="deleteRecordById(${r.id})">删除</button>`
+      : `<button class="btn btn-sm btn-outline" onclick="viewRecordDetail(${r.id})">查看</button>`;
     return `
       <div class="record-item" onclick="viewRecordDetail(${r.id})">
         <div class="record-item-header">
-          <span class="record-item-title">${r.bed} ${r.name} ISBAR交班记录</span>
+          <span class="record-item-title">${r.bed} ${r.name} ISBAR交班记录${ownerLabel}</span>
           <span class="record-item-meta">${r.ward} | ${r.nurseName} | ${r.time}</span>
         </div>
         <div class="record-item-preview">${preview}</div>
         <div class="record-item-actions" onclick="event.stopPropagation()">
-          <button class="btn btn-sm btn-primary" onclick="loadRecordToEditor(${r.id})">加载编辑</button>
-          <button class="btn btn-sm btn-outline" onclick="deleteRecordById(${r.id})">删除</button>
+          ${actionButtons}
         </div>
       </div>`;
   }).join('');
@@ -781,6 +797,7 @@ function loadRecordToEditor(id) {
   const records = getRecords();
   const r = records.find(r => r.id === id);
   if (!r) return;
+  if (!canEditRecord(r)) { showToast('您只能编辑自己录入的记录'); return; }
   if (r.isbarData) {
     $('isbarI').value = r.isbarData.I || '';
     $('isbarS').value = r.isbarData.S || '';
@@ -799,6 +816,48 @@ function deleteRecordById(id) {
   saveRecords(records);
   renderRecordsList();
   showToast('记录已删除');
+}
+
+/** 管理员导出全部记录为Excel */
+function exportAllExcel() {
+  if (!STATE.currentUser || STATE.currentUser.role !== 'admin') {
+    showToast('仅管理员可导出全部记录');
+    return;
+  }
+  const records = getRecords();
+  if (records.length === 0) { showToast('暂无记录可导出'); return; }
+
+  try {
+    const data = records.map(r => ({
+      '录入时间': r.time || '',
+      '病区': r.ward || '',
+      '录入者': r.nurseName || '',
+      '工牌号': r.nurseId || '',
+      '床号': r.bed || '',
+      '患者姓名': r.name || '',
+      '身份确认(I)': (r.isbarData && r.isbarData.I) || '',
+      '患者情况(S)': (r.isbarData && r.isbarData.S) || '',
+      '背景信息(B)': (r.isbarData && r.isbarData.B) || '',
+      '综合评估(A)': (r.isbarData && r.isbarData.A) || '',
+      '护理建议(R)': (r.isbarData && r.isbarData.R) || '',
+      '状态': r.isDraft ? '暂存' : '已完成',
+      '完整报告': r.report || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    // 设置列宽
+    ws['!cols'] = [
+      { wch: 18 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
+      { wch: 8 }, { wch: 10 }, { wch: 30 }, { wch: 30 },
+      { wch: 30 }, { wch: 30 }, { wch: 30 }, { wch: 8 }, { wch: 50 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '交班记录');
+    XLSX.writeFile(wb, `ISBAR交班记录_${getTodayDate()}.xlsx`);
+    showToast(`已导出 ${records.length} 条记录`);
+  } catch (e) {
+    showToast('导出失败：' + e.message);
+  }
 }
 
 // ========== PWA ==========

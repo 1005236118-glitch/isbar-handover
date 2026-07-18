@@ -151,6 +151,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:
 .record-item:hover{border-color:var(--primary);background:var(--primary-light)}
 .record-item-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px}
 .record-item-title{font-weight:600;font-size:.9rem}
+.record-owner-tag{font-weight:400;font-size:.75rem;color:var(--text-muted);margin-left:4px}
 .record-item-meta{font-size:.75rem;color:var(--text-muted)}
 .record-item-preview{font-size:.8rem;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .record-item-actions{display:flex;gap:6px;margin-top:6px}

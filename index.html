@@ -13,6 +13,7 @@
   <link rel="apple-touch-icon" href="./icon-192.svg">
   <title>智交班 - 神经科ISBAR交班助手</title>
   <link rel="stylesheet" href="./style.css">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -255,6 +256,10 @@
           </select>
           <button class="btn btn-primary btn-sm" onclick="searchRecords()">查询</button>
         </div>
+        <button class="btn btn-accent btn-sm" id="btnExportExcel" onclick="exportAllExcel()" style="display:none;flex-shrink:0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出Excel
+        </button>
       </div>
       <div class="records-list" id="recordsList">
         <p class="empty-hint">暂无交班记录</p>
